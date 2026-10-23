@@ -1,16 +1,14 @@
-# Archivos temporales de IntelliJ y Android Studio
+# IntelliJ y Android Studio
 .idea/
 *.iml
 
-# Archivos generados por Maven
+# Archivos generados por Maven y Gradle
 **/target/
-
-# Archivos generados por Gradle y Android
 **/build/
 .gradle/
 local.properties
 
-# Archivos del sistema operativo
+# Archivos temporales de macOS y Windows
 .DS_Store
 ._*
 Thumbs.db
