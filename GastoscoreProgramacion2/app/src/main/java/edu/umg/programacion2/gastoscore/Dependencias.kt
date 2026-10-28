@@ -1,8 +1,11 @@
 package edu.umg.programacion2.gastoscore
 
+import android.content.Context
 import edu.umg.programacion2.gastos.servicio.ControlGastos
-import edu.umg.programacion2.gastos.datos.GastoRepositoryEnMemoria
 
 object Dependencias {
-    val control = ControlGastos(GastoRepositoryEnMemoria())
+
+    fun obtenerControl(context: Context): ControlGastos {
+        return ControlGastosApp.obtener(context)
+    }
 }

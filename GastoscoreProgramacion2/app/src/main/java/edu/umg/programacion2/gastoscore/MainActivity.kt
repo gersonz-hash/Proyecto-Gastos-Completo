@@ -1,6 +1,7 @@
 
 package edu.umg.programacion2.gastoscore
 
+import android.app.Application
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -24,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import edu.umg.programacion2.gastos.modelo.Categoria
 import edu.umg.programacion2.gastos.modelo.Gasto
@@ -31,12 +33,15 @@ import edu.umg.programacion2.gastoscore.ui.theme.GastoscoreProgramacion2Theme
 import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             GastoscoreProgramacion2Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ) { padding ->
                     FormularioGasto(
                         modifier = Modifier.padding(padding)
                     )
@@ -48,15 +53,23 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun FormularioGasto(modifier: Modifier = Modifier) {
+
     var descripcion by remember { mutableStateOf("") }
     var monto by remember { mutableStateOf("") }
+
     var categoria by remember {
         mutableStateOf(Categoria.ALIMENTACION)
     }
+
     var menuAbierto by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val modelo: GastosViewModel = viewModel()
+
+    val modelo: GastosViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory
+            .getInstance(context.applicationContext as Application)
+    )
+
     val estado by modelo.estado.collectAsState()
 
     Column(
@@ -65,6 +78,7 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+
         Text("Control de gastos")
 
         OutlinedTextField(
@@ -107,7 +121,8 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
             onClick = {
                 val cantidad = monto.toDoubleOrNull()
 
-                if (descripcion.isBlank() ||
+                if (
+                    descripcion.isBlank() ||
                     cantidad == null ||
                     cantidad <= 0
                 ) {
@@ -131,6 +146,7 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
                                 "Gasto registrado correctamente",
                                 Toast.LENGTH_SHORT
                             ).show()
+
                             descripcion = ""
                             monto = ""
                         } else {
@@ -167,6 +183,7 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
 
 @Composable
 fun TarjetaGasto(gasto: Gasto) {
+
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {

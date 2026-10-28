@@ -1,7 +1,8 @@
 
 package edu.umg.programacion2.gastoscore
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import edu.umg.programacion2.gastos.modelo.Gasto
 import edu.umg.programacion2.gastos.servicio.ControlGastos
@@ -14,9 +15,12 @@ data class GastosUiState(
     val egresos: Double = 0.0
 )
 
-class GastosViewModel : ViewModel() {
+class GastosViewModel(
+    application: Application
+) : AndroidViewModel(application) {
 
-    private val control: ControlGastos = Dependencias.control
+    private val control: ControlGastos =
+        Dependencias.obtenerControl(application)
 
     private val _estado = MutableStateFlow(GastosUiState())
     val estado = _estado.asStateFlow()
