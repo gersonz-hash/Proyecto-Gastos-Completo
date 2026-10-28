@@ -1,3 +1,4 @@
+
 package edu.umg.programacion2.gastoscore
 
 import android.app.Application
@@ -33,18 +34,12 @@ import edu.umg.programacion2.gastoscore.ui.theme.GastoscoreProgramacion2Theme
 import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             GastoscoreProgramacion2Theme {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize()
-                ) { padding ->
-                    FormularioGasto(
-                        modifier = Modifier.padding(padding)
-                    )
+                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+                    FormularioGasto(modifier = Modifier.padding(padding))
                 }
             }
         }
@@ -53,30 +48,23 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun FormularioGasto(modifier: Modifier = Modifier) {
-
     var descripcion by remember { mutableStateOf("") }
     var monto by remember { mutableStateOf("") }
-    var categoria by remember {
-        mutableStateOf(Categoria.ALIMENTACION)
-    }
+    var categoria by remember { mutableStateOf(Categoria.ALIMENTACION) }
     var menuAbierto by remember { mutableStateOf(false) }
+    var gastoEditandoId by remember { mutableStateOf<Int?>(null) }
 
     val context = LocalContext.current
-
     val modelo: GastosViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory
             .getInstance(context.applicationContext as Application)
     )
-
     val estado by modelo.estado.collectAsState()
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(20.dp),
+        modifier = modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-
         Text("Control de gastos")
 
         OutlinedTextField(
@@ -119,47 +107,74 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
             onClick = {
                 val cantidad = monto.toDoubleOrNull()
 
-                if (
-                    descripcion.isBlank() ||
-                    cantidad == null ||
-                    cantidad <= 0
-                ) {
+                if (descripcion.isBlank() || cantidad == null || cantidad <= 0) {
                     Toast.makeText(
                         context,
                         "Ingresa una descripción y un monto válido",
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
+                    val idActual = gastoEditandoId
                     val gasto = Gasto(
+                        id = idActual ?: 0,
                         descripcion = descripcion.trim(),
                         monto = cantidad,
                         categoria = categoria,
-                        fecha = LocalDate.now().toString()
+                        fecha = estado.transacciones
+                            .firstOrNull { it.id == idActual }
+                            ?.fecha ?: LocalDate.now().toString()
                     )
 
-                    modelo.registrar(gasto) { error ->
-                        if (error == null) {
-                            Toast.makeText(
-                                context,
-                                "Gasto registrado correctamente",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            descripcion = ""
-                            monto = ""
-                        } else {
-                            Toast.makeText(
-                                context,
-                                error,
-                                Toast.LENGTH_LONG
-                            ).show()
+                    if (idActual == null) {
+                        modelo.registrar(gasto) { error ->
+                            if (error == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Gasto registrado correctamente",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                descripcion = ""
+                                monto = ""
+                            } else {
+                                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } else {
+                        modelo.editar(gasto) { error ->
+                            if (error == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Gasto actualizado correctamente",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                descripcion = ""
+                                monto = ""
+                                categoria = Categoria.ALIMENTACION
+                                gastoEditandoId = null
+                            } else {
+                                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Guardar gasto")
+            Text(if (gastoEditandoId == null) "Guardar gasto" else "Actualizar gasto")
+        }
+
+        if (gastoEditandoId != null) {
+            Button(
+                onClick = {
+                    descripcion = ""
+                    monto = ""
+                    categoria = Categoria.ALIMENTACION
+                    gastoEditandoId = null
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancelar edición")
+            }
         }
 
         Text("Total de gastos: Q %.2f".format(estado.egresos))
@@ -178,19 +193,26 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
                     alEliminar = {
                         modelo.eliminar(gasto.id) { error ->
                             if (error == null) {
+                                if (gastoEditandoId == gasto.id) {
+                                    descripcion = ""
+                                    monto = ""
+                                    gastoEditandoId = null
+                                }
                                 Toast.makeText(
                                     context,
                                     "Gasto eliminado correctamente",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             } else {
-                                Toast.makeText(
-                                    context,
-                                    error,
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                             }
                         }
+                    },
+                    alEditar = {
+                        descripcion = gasto.descripcion
+                        monto = gasto.monto.toString()
+                        categoria = gasto.categoria
+                        gastoEditandoId = gasto.id
                     }
                 )
             }
@@ -201,11 +223,10 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
 @Composable
 fun TarjetaGasto(
     gasto: Gasto,
-    alEliminar: () -> Unit
+    alEliminar: () -> Unit,
+    alEditar: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -219,6 +240,9 @@ fun TarjetaGasto(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                Button(onClick = alEditar) {
+                    Text("Editar")
+                }
                 Button(onClick = alEliminar) {
                     Text("Eliminar")
                 }
