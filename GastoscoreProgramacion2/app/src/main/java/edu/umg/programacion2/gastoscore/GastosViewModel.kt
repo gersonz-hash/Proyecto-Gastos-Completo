@@ -22,6 +22,8 @@ class GastosViewModel(
     private val control: ControlGastos =
         Dependencias.obtenerControl(application)
 
+    private val dao = GestorBaseDatos.obtenerDao(application)
+
     private val _estado = MutableStateFlow(GastosUiState())
     val estado = _estado.asStateFlow()
 
@@ -44,6 +46,25 @@ class GastosViewModel(
             } catch (e: Exception) {
                 alTerminar(
                     e.message ?: "No se pudo registrar el gasto"
+                )
+            }
+        }
+    }
+
+    fun eliminar(id: Int, alTerminar: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val eliminado = dao.eliminar(id)
+
+                if (eliminado > 0) {
+                    actualizarEstado()
+                    alTerminar(null)
+                } else {
+                    alTerminar("No se encontró el gasto")
+                }
+            } catch (e: Exception) {
+                alTerminar(
+                    e.message ?: "No se pudo eliminar el gasto"
                 )
             }
         }

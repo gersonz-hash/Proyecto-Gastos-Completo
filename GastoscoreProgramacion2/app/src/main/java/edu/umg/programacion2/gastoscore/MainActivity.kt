@@ -1,4 +1,3 @@
-
 package edu.umg.programacion2.gastoscore
 
 import android.app.Application
@@ -8,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -56,11 +56,9 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
 
     var descripcion by remember { mutableStateOf("") }
     var monto by remember { mutableStateOf("") }
-
     var categoria by remember {
         mutableStateOf(Categoria.ALIMENTACION)
     }
-
     var menuAbierto by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -175,15 +173,36 @@ fun FormularioGasto(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(estado.transacciones) { gasto ->
-                TarjetaGasto(gasto)
+                TarjetaGasto(
+                    gasto = gasto,
+                    alEliminar = {
+                        modelo.eliminar(gasto.id) { error ->
+                            if (error == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Gasto eliminado correctamente",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    error,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun TarjetaGasto(gasto: Gasto) {
-
+fun TarjetaGasto(
+    gasto: Gasto,
+    alEliminar: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -195,6 +214,15 @@ fun TarjetaGasto(gasto: Gasto) {
             Text("Monto: Q %.2f".format(gasto.monto))
             Text("Categoría: ${gasto.categoria}")
             Text("Fecha: ${gasto.fecha}")
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(onClick = alEliminar) {
+                    Text("Eliminar")
+                }
+            }
         }
     }
 }
