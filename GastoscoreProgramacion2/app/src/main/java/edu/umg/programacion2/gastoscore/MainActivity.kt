@@ -1,3 +1,4 @@
+
 package edu.umg.programacion2.gastoscore
 
 import android.app.Application
@@ -37,6 +38,7 @@ import edu.umg.programacion2.gastos.modelo.Gasto
 import edu.umg.programacion2.gastoscore.ui.theme.GastoscoreProgramacion2Theme
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private const val PREFERENCIAS_TEMA = "preferencias_tema"
@@ -61,6 +63,17 @@ private val ColoresGrafica = listOf(
 
 private fun formatoQ(valor: Double): String =
     "Q " + String.format(Locale.US, "%.2f", valor)
+
+// Convierte yyyy-MM-dd a dd/MM/yyyy para mostrar la fecha.
+private fun formatoFecha(fecha: String): String {
+    return try {
+        LocalDate.parse(fecha).format(
+            DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        )
+    } catch (e: Exception) {
+        fecha
+    }
+}
 
 private fun iconoCategoria(nombre: String): String {
     val c = nombre.uppercase()
@@ -757,13 +770,21 @@ fun FormularioGasto(
                                 Toast.LENGTH_LONG
                             ).show()
                         } else {
+                            // Para un gasto nuevo se obtiene la fecha actual
+                            // justo cuando se presiona Guardar gasto.
+                            // Al editar, se conserva la fecha original.
+                            val fechaGasto = if (gastoInicial == null) {
+                                LocalDate.now().toString()
+                            } else {
+                                gastoInicial.fecha
+                            }
+
                             val gasto = Gasto(
                                 id = gastoInicial?.id ?: 0,
                                 descripcion = descripcion.trim(),
                                 monto = cantidad,
                                 categoria = categoria,
-                                fecha = gastoInicial?.fecha
-                                    ?: LocalDate.now().toString()
+                                fecha = fechaGasto
                             )
 
                             val terminar: (String?) -> Unit = { error ->
@@ -1515,8 +1536,9 @@ fun TarjetaGasto(
                         fontSize = 12.sp
                     )
 
+                    // Mostrar la fecha como dd/MM/yyyy.
                     Text(
-                        gasto.fecha,
+                        formatoFecha(gasto.fecha),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
