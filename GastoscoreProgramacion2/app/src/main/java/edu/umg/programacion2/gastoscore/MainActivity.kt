@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
@@ -87,7 +88,7 @@ fun NavegacionGastos() {
                         },
                         icon = {
                             Text(
-                                when (nombre) {
+                                text = when (nombre) {
                                     "Inicio" -> "⌂"
                                     "Registrar" -> "+"
                                     "Movimientos" -> "☰"
@@ -145,7 +146,10 @@ fun NavegacionGastos() {
 }
 
 @Composable
-fun Encabezado(titulo: String, subtitulo: String) {
+fun Encabezado(
+    titulo: String,
+    subtitulo: String
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
@@ -164,7 +168,10 @@ fun Encabezado(titulo: String, subtitulo: String) {
 }
 
 @Composable
-fun TarjetaTotal(total: Double, texto: String = "Total de gastos registrados") {
+fun TarjetaTotal(
+    total: Double,
+    texto: String = "Total de gastos registrados"
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -176,9 +183,13 @@ fun TarjetaTotal(total: Double, texto: String = "Total de gastos registrados") {
             modifier = Modifier.padding(22.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(texto, color = Color.White, fontSize = 15.sp)
             Text(
-                "Q %.2f".format(total),
+                text = texto,
+                color = Color.White,
+                fontSize = 15.sp
+            )
+            Text(
+                text = "Q %.2f".format(total),
                 color = Color.White,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold
@@ -197,51 +208,287 @@ fun PantallaInicio(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .background(Fondo)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Encabezado(
-            "Control de gastos",
-            "Administrá tu dinero de forma sencilla"
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    text = "¡Hola!",
+                    color = TextoSecundario,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = "Control de gastos",
+                    color = AzulOscuro,
+                    fontSize = 27.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Organizá tu dinero fácilmente",
+                    color = TextoSecundario,
+                    fontSize = 14.sp
+                )
+            }
 
-        TarjetaTotal(total)
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFFDCEBFA),
+                modifier = Modifier.size(58.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Q",
+                        color = AzulPrincipal,
+                        fontSize = 29.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = AzulPrincipal
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 5.dp
+            )
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF123B5D)
+                            )
+                        )
+                    )
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Resumen general",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AzulOscuro
+                    text = "TOTAL DE EGRESOS",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Text("Movimientos registrados: $cantidad")
-                Text("Total de egresos: Q %.2f".format(total))
 
+                Text(
+                    text = "Q %.2f".format(total),
+                    color = Color.White,
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                HorizontalDivider(
+                    color = Color.White.copy(alpha = 0.25f)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Movimientos registrados",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 13.sp
+                    )
+
+                    Surface(
+                        color = Color.White.copy(alpha = 0.18f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = cantidad.toString(),
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = 7.dp
+                            ),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "Resumen general",
+            color = AzulOscuro,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        color = Color(0xFFDCEBFA),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(42.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Q",
+                                color = AzulPrincipal,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Egresos",
+                        color = TextoSecundario,
+                        fontSize = 13.sp
+                    )
+
+                    Text(
+                        text = "Q %.2f".format(total),
+                        color = AzulOscuro,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        color = Color(0xFFE1F5E8),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(42.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "✓",
+                                color = Color(0xFF23844B),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Movimientos",
+                        color = TextoSecundario,
+                        fontSize = 13.sp
+                    )
+
+                    Text(
+                        text = cantidad.toString(),
+                        color = AzulOscuro,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = "Accesos rápidos",
+            color = AzulOscuro,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Button(
                     onClick = irARegistro,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AzulPrincipal
+                    )
                 ) {
-                    Text("Registrar gasto")
+                    Text(
+                        text = "+   Registrar nuevo gasto",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
                 OutlinedButton(
                     onClick = irAMovimientos,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(15.dp)
                 ) {
-                    Text("Ver movimientos")
+                    Text(
+                        text = "Ver todos los movimientos",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
+
+        Text(
+            text = "Tus finanzas, organizadas en un solo lugar.",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            color = TextoSecundario,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -281,7 +528,9 @@ fun FormularioGasto(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
             shape = RoundedCornerShape(18.dp)
         ) {
             Column(
@@ -307,7 +556,7 @@ fun FormularioGasto(
                 )
 
                 Text(
-                    "Categoría",
+                    text = "Categoría",
                     color = AzulOscuro,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -428,7 +677,9 @@ fun PantallaMovimientos(
     var pendienteEliminar by remember { mutableStateOf<Gasto?>(null) }
 
     val meses = gastos.mapNotNull {
-        runCatching { YearMonth.parse(it.fecha.take(7)) }.getOrNull()
+        runCatching {
+            YearMonth.parse(it.fecha.take(7))
+        }.getOrNull()
     }.distinct().sortedDescending()
 
     val filtrados = gastos.filter { gasto ->
@@ -450,7 +701,10 @@ fun PantallaMovimientos(
             .background(Fondo)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Encabezado("Movimientos", "Buscá, editá o eliminá tus gastos")
+        Encabezado(
+            "Movimientos",
+            "Buscá, editá o eliminá tus gastos"
+        )
 
         Spacer(Modifier.height(12.dp))
 
@@ -476,6 +730,7 @@ fun PantallaMovimientos(
                         else mesFiltro
                     )
                 }
+
                 DropdownMenu(
                     expanded = menuMes,
                     onDismissRequest = { menuMes = false }
@@ -487,6 +742,7 @@ fun PantallaMovimientos(
                             menuMes = false
                         }
                     )
+
                     meses.forEach { mes ->
                         DropdownMenuItem(
                             text = { Text(mes.toString()) },
@@ -506,6 +762,7 @@ fun PantallaMovimientos(
                 ) {
                     Text(categoriaFiltro ?: "Todas")
                 }
+
                 DropdownMenu(
                     expanded = menuCategoria,
                     onDismissRequest = { menuCategoria = false }
@@ -517,6 +774,7 @@ fun PantallaMovimientos(
                             menuCategoria = false
                         }
                     )
+
                     Categoria.entries.forEach { opcion ->
                         DropdownMenuItem(
                             text = { Text(opcion.name) },
@@ -531,7 +789,7 @@ fun PantallaMovimientos(
         }
 
         Text(
-            "${filtrados.size} movimientos encontrados",
+            text = "${filtrados.size} movimientos encontrados",
             color = TextoSecundario,
             modifier = Modifier.padding(vertical = 8.dp)
         )
@@ -544,7 +802,7 @@ fun PantallaMovimientos(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "No hay movimientos que coincidan.",
+                    text = "No hay movimientos que coincidan.",
                     color = TextoSecundario
                 )
             }
@@ -584,7 +842,10 @@ fun PantallaMovimientos(
                         }
                     }
                 ) {
-                    Text("Eliminar", color = Rojo)
+                    Text(
+                        text = "Eliminar",
+                        color = Rojo
+                    )
                 }
             },
             dismissButton = {
@@ -604,7 +865,9 @@ fun PantallaReportes(gastos: List<Gasto>) {
     var menuMes by remember { mutableStateOf(false) }
 
     val meses = gastos.mapNotNull {
-        runCatching { YearMonth.parse(it.fecha.take(7)) }.getOrNull()
+        runCatching {
+            YearMonth.parse(it.fecha.take(7))
+        }.getOrNull()
     }.distinct().sortedDescending()
 
     val gastosDelMes = gastos.filter {
@@ -612,6 +875,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
     }
 
     val total = gastosDelMes.sumOf { it.monto }
+
     val resumen = gastosDelMes
         .groupBy { it.categoria }
         .mapValues { (_, lista) -> lista.sumOf { it.monto } }
@@ -626,7 +890,10 @@ fun PantallaReportes(gastos: List<Gasto>) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Encabezado("Reportes", "Revisá en qué categorías gastás más")
+        Encabezado(
+            "Reportes",
+            "Revisá en qué categorías gastás más"
+        )
 
         Box {
             OutlinedButton(
@@ -638,6 +905,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
                     else "Período: $mesFiltro"
                 )
             }
+
             DropdownMenu(
                 expanded = menuMes,
                 onDismissRequest = { menuMes = false }
@@ -649,6 +917,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
                         menuMes = false
                     }
                 )
+
                 meses.forEach { mes ->
                     DropdownMenuItem(
                         text = { Text(mes.toString()) },
@@ -661,11 +930,16 @@ fun PantallaReportes(gastos: List<Gasto>) {
             }
         }
 
-        TarjetaTotal(total, "Total del período")
+        TarjetaTotal(
+            total = total,
+            texto = "Total del período"
+        )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
             shape = RoundedCornerShape(18.dp)
         ) {
             Column(
@@ -673,7 +947,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    "Resumen por categoría",
+                    text = "Resumen por categoría",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = AzulOscuro
@@ -681,7 +955,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
 
                 if (resumen.isEmpty()) {
                     Text(
-                        "Todavía no hay gastos para este período.",
+                        text = "Todavía no hay gastos para este período.",
                         color = TextoSecundario
                     )
                 } else {
@@ -696,21 +970,26 @@ fun PantallaReportes(gastos: List<Gasto>) {
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                categoria.name,
+                                text = categoria.name,
                                 color = AzulOscuro,
                                 fontWeight = FontWeight.SemiBold
                             )
+
                             Text(
-                                "Gastado: Q %.2f".format(cantidad),
+                                text = "Gastado: Q %.2f".format(cantidad),
                                 color = TextoSecundario
                             )
+
                             LinearProgressIndicator(
-                                progress = { (porcentaje / 100).toFloat() },
+                                progress = {
+                                    (porcentaje / 100).toFloat()
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 color = AzulPrincipal
                             )
+
                             Text(
-                                "%.1f%% del total".format(porcentaje),
+                                text = "%.1f%% del total".format(porcentaje),
                                 color = TextoSecundario,
                                 fontSize = 12.sp
                             )
@@ -731,8 +1010,12 @@ fun TarjetaGasto(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -748,20 +1031,21 @@ fun TarjetaGasto(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        gasto.descripcion,
+                        text = gasto.descripcion,
                         color = AzulOscuro,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
+
                     Text(
-                        gasto.categoria.name,
+                        text = gasto.categoria.name,
                         color = TextoSecundario,
                         fontSize = 13.sp
                     )
                 }
 
                 Text(
-                    "Q %.2f".format(gasto.monto),
+                    text = "Q %.2f".format(gasto.monto),
                     color = Rojo,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
@@ -769,7 +1053,7 @@ fun TarjetaGasto(
             }
 
             Text(
-                "Fecha: ${gasto.fecha}",
+                text = "Fecha: ${gasto.fecha}",
                 color = TextoSecundario,
                 fontSize = 12.sp
             )
@@ -789,7 +1073,10 @@ fun TarjetaGasto(
                     onClick = alEliminar,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Eliminar", color = Rojo)
+                    Text(
+                        text = "Eliminar",
+                        color = Rojo
+                    )
                 }
             }
         }
