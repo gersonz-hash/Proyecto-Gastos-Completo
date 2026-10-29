@@ -14,19 +14,20 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import edu.umg.programacion2.gastos.modelo.Gasto
+import java.time.YearMonth
 
 private data class OpcionMenu(
     val ruta: String,
@@ -45,6 +46,12 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
     )
 
     val estado by modelo.estado.collectAsState()
+
+    val mesActual = YearMonth.now().toString()
+    val gastosMes = estado.transacciones.filter {
+        it.fecha.startsWith(mesActual)
+    }
+    val totalMes = gastosMes.sumOf { it.monto }
 
     val opciones = listOf(
         OpcionMenu("inicio", "Inicio", Icons.Default.Home),
@@ -80,9 +87,7 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
                                 contentDescription = opcion.titulo
                             )
                         },
-                        label = {
-                            Text(opcion.titulo)
-                        }
+                        label = { Text(opcion.titulo) }
                     )
                 }
             }
@@ -95,8 +100,9 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
         ) {
             composable("inicio") {
                 PantallaInicio(
-                    total = estado.egresos,
-                    cantidad = estado.transacciones.size,
+                    total = totalMes,
+                    cantidad = gastosMes.size,
+                    gastos = gastosMes,
                     irARegistro = {
                         navController.navigate("registrar")
                     },
@@ -136,8 +142,9 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
                     ?.getString("gastoId")
                     ?.toIntOrNull()
 
-                val gasto = estado.transacciones
-                    .firstOrNull { it.id == gastoId }
+                val gasto = estado.transacciones.firstOrNull {
+                    it.id == gastoId
+                }
 
                 if (gasto != null) {
                     FormularioGasto(
