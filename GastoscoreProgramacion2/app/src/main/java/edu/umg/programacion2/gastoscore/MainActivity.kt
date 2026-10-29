@@ -36,6 +36,7 @@ private val AzulPrincipal = Color(0xFF1565C0)
 private val AzulOscuro = Color(0xFF123B5D)
 private val TextoSecundario = Color(0xFF64748B)
 private val Rojo = Color(0xFFC62828)
+private val Verde = Color(0xFF23844B)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -125,6 +126,7 @@ fun NavegacionGastos() {
                     },
                     alCancelar = {
                         gastoEditando = null
+                        pantalla = "Movimientos"
                     }
                 )
 
@@ -197,6 +199,8 @@ fun TarjetaTotal(
         }
     }
 }
+
+// PANTALLA PRINCIPAL
 
 @Composable
 fun PantallaInicio(
@@ -406,7 +410,7 @@ fun PantallaInicio(
                         ) {
                             Text(
                                 text = "✓",
-                                color = Color(0xFF23844B),
+                                color = Verde,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -492,6 +496,8 @@ fun PantallaInicio(
     }
 }
 
+// REGISTRAR Y EDITAR GASTOS
+
 @Composable
 fun FormularioGasto(
     modelo: GastosViewModel,
@@ -509,81 +515,148 @@ fun FormularioGasto(
         mutableStateOf(gastoInicial?.monto?.toString() ?: "")
     }
     var categoria by remember(gastoInicial?.id) {
-        mutableStateOf(gastoInicial?.categoria ?: Categoria.ALIMENTACION)
+        mutableStateOf(
+            gastoInicial?.categoria ?: Categoria.ALIMENTACION
+        )
     }
     var menuAbierto by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .background(Fondo)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         Encabezado(
-            if (gastoInicial == null) "Registrar gasto" else "Editar gasto",
-            "Ingresá los datos del movimiento"
+            if (gastoInicial == null) "Nuevo movimiento"
+            else "Editar movimiento",
+            "Ingresá los datos de tu gasto"
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),
-            shape = RoundedCornerShape(18.dp)
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 3.dp
+            )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(17.dp)
             ) {
-                OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción") },
-                    placeholder = { Text("Ej. Almuerzo") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = monto,
-                    onValueChange = { monto = it },
-                    label = { Text("Monto en quetzales") },
-                    placeholder = { Text("Ej. 45.50") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
                 Text(
-                    text = "Categoría",
+                    text = if (gastoInicial == null)
+                        "Detalles del gasto"
+                    else
+                        "Modificar detalles",
                     color = AzulOscuro,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold
                 )
 
-                Box {
-                    OutlinedButton(
-                        onClick = { menuAbierto = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(categoria.name)
-                    }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(
+                        text = "Descripción",
+                        color = AzulOscuro,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
 
-                    DropdownMenu(
-                        expanded = menuAbierto,
-                        onDismissRequest = { menuAbierto = false }
-                    ) {
-                        Categoria.entries.forEach { opcion ->
-                            DropdownMenuItem(
-                                text = { Text(opcion.name) },
-                                onClick = {
-                                    categoria = opcion
-                                    menuAbierto = false
-                                }
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        placeholder = { Text("Ej. Almuerzo") },
+                        leadingIcon = {
+                            Text("✎", fontSize = 20.sp)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(15.dp),
+                        singleLine = true
+                    )
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(
+                        text = "Monto en quetzales",
+                        color = AzulOscuro,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+
+                    OutlinedTextField(
+                        value = monto,
+                        onValueChange = { monto = it },
+                        placeholder = { Text("0.00") },
+                        leadingIcon = {
+                            Text(
+                                "Q",
+                                color = AzulPrincipal,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
                             )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(15.dp),
+                        singleLine = true
+                    )
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(
+                        text = "Categoría",
+                        color = AzulOscuro,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+
+                    Box {
+                        OutlinedButton(
+                            onClick = { menuAbierto = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(15.dp)
+                        ) {
+                            Text(
+                                text = categoria.name,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Start,
+                                color = AzulOscuro
+                            )
+                            Text("⌄", fontSize = 20.sp)
+                        }
+
+                        DropdownMenu(
+                            expanded = menuAbierto,
+                            onDismissRequest = {
+                                menuAbierto = false
+                            }
+                        ) {
+                            Categoria.entries.forEach { opcion ->
+                                DropdownMenuItem(
+                                    text = { Text(opcion.name) },
+                                    onClick = {
+                                        categoria = opcion
+                                        menuAbierto = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
+
+                HorizontalDivider(color = Fondo)
 
                 Button(
                     onClick = {
@@ -639,18 +712,31 @@ fun FormularioGasto(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AzulPrincipal
+                    )
                 ) {
                     Text(
-                        if (gastoInicial == null) "Guardar gasto"
-                        else "Actualizar gasto"
+                        text = if (gastoInicial == null)
+                            "Guardar gasto"
+                        else
+                            "Actualizar gasto",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 if (gastoInicial != null) {
                     OutlinedButton(
                         onClick = alCancelar,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(15.dp)
                     ) {
                         Text("Cancelar edición")
                     }
@@ -658,9 +744,46 @@ fun FormularioGasto(
             }
         }
 
-        TarjetaTotal(estado.egresos)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFE5EFFB)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "✓",
+                    color = AzulPrincipal,
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Tus gastos, bajo control",
+                        color = AzulOscuro,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Total de egresos registrados: Q %.2f"
+                            .format(estado.egresos),
+                        color = TextoSecundario,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
     }
 }
+
+// PANTALLA DE MOVIMIENTOS
 
 @Composable
 fun PantallaMovimientos(
@@ -669,6 +792,7 @@ fun PantallaMovimientos(
     alEditar: (Gasto) -> Unit
 ) {
     val context = LocalContext.current
+
     var busqueda by remember { mutableStateOf("") }
     var categoriaFiltro by remember { mutableStateOf<String?>(null) }
     var mesFiltro by remember { mutableStateOf("Todos") }
@@ -687,8 +811,10 @@ fun PantallaMovimientos(
             busqueda.trim(),
             ignoreCase = true
         )
+
         val coincideCategoria = categoriaFiltro == null ||
                 gasto.categoria.name == categoriaFiltro
+
         val coincideMes = mesFiltro == "Todos" ||
                 gasto.fecha.startsWith(mesFiltro)
 
@@ -702,19 +828,23 @@ fun PantallaMovimientos(
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Encabezado(
-            "Movimientos",
-            "Buscá, editá o eliminá tus gastos"
+            "Mis movimientos",
+            "Consultá y administrá tus gastos"
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
         OutlinedTextField(
             value = busqueda,
             onValueChange = { busqueda = it },
             label = { Text("Buscar por descripción") },
+            placeholder = { Text("Ej. Transporte") },
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(15.dp),
             singleLine = true
         )
+
+        Spacer(Modifier.height(10.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -723,7 +853,8 @@ fun PantallaMovimientos(
             Box(Modifier.weight(1f)) {
                 OutlinedButton(
                     onClick = { menuMes = true },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(13.dp)
                 ) {
                     Text(
                         if (mesFiltro == "Todos") "Todos los meses"
@@ -758,7 +889,8 @@ fun PantallaMovimientos(
             Box(Modifier.weight(1f)) {
                 OutlinedButton(
                     onClick = { menuCategoria = true },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(13.dp)
                 ) {
                     Text(categoriaFiltro ?: "Todas")
                 }
@@ -791,7 +923,8 @@ fun PantallaMovimientos(
         Text(
             text = "${filtrados.size} movimientos encontrados",
             color = TextoSecundario,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(vertical = 10.dp),
+            fontSize = 13.sp
         )
 
         if (filtrados.isEmpty()) {
@@ -801,15 +934,41 @@ fun PantallaMovimientos(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No hay movimientos que coincidan.",
-                    color = TextoSecundario
-                )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "☰",
+                            fontSize = 32.sp,
+                            color = AzulPrincipal
+                        )
+                        Text(
+                            text = "No hay movimientos",
+                            color = AzulOscuro,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
+                        Text(
+                            text = "Probá con otro filtro o registrá un gasto.",
+                            color = TextoSecundario,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filtrados, key = { it.id }) { gasto ->
                     TarjetaGasto(
@@ -859,6 +1018,8 @@ fun PantallaMovimientos(
     }
 }
 
+// PANTALLA DE REPORTES
+
 @Composable
 fun PantallaReportes(gastos: List<Gasto>) {
     var mesFiltro by remember { mutableStateOf("Todos") }
@@ -885,121 +1046,223 @@ fun PantallaReportes(gastos: List<Gasto>) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .background(Fondo)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         Encabezado(
-            "Reportes",
-            "Revisá en qué categorías gastás más"
-        )
-
-        Box {
-            OutlinedButton(
-                onClick = { menuMes = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    if (mesFiltro == "Todos") "Todos los meses"
-                    else "Período: $mesFiltro"
-                )
-            }
-
-            DropdownMenu(
-                expanded = menuMes,
-                onDismissRequest = { menuMes = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Todos los meses") },
-                    onClick = {
-                        mesFiltro = "Todos"
-                        menuMes = false
-                    }
-                )
-
-                meses.forEach { mes ->
-                    DropdownMenuItem(
-                        text = { Text(mes.toString()) },
-                        onClick = {
-                            mesFiltro = mes.toString()
-                            menuMes = false
-                        }
-                    )
-                }
-            }
-        }
-
-        TarjetaTotal(
-            total = total,
-            texto = "Total del período"
+            "Mis reportes",
+            "Descubrí en qué categorías gastás más"
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
-            ),
-            shape = RoundedCornerShape(18.dp)
+            )
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Resumen por categoría",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AzulOscuro
+                    text = "Período de consulta",
+                    color = AzulOscuro,
+                    fontWeight = FontWeight.SemiBold
                 )
 
-                if (resumen.isEmpty()) {
-                    Text(
-                        text = "Todavía no hay gastos para este período.",
-                        color = TextoSecundario
-                    )
-                } else {
-                    resumen.forEach { (categoria, cantidad) ->
-                        val porcentaje = if (total > 0) {
-                            cantidad * 100 / total
-                        } else {
-                            0.0
-                        }
+                Box {
+                    OutlinedButton(
+                        onClick = { menuMes = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(
+                            if (mesFiltro == "Todos") "Todos los meses"
+                            else mesFiltro
+                        )
+                    }
 
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                    DropdownMenu(
+                        expanded = menuMes,
+                        onDismissRequest = { menuMes = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Todos los meses") },
+                            onClick = {
+                                mesFiltro = "Todos"
+                                menuMes = false
+                            }
+                        )
+
+                        meses.forEach { mes ->
+                            DropdownMenuItem(
+                                text = { Text(mes.toString()) },
+                                onClick = {
+                                    mesFiltro = mes.toString()
+                                    menuMes = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = AzulPrincipal
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 4.dp
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF123B5D)
+                            )
+                        )
+                    )
+                    .padding(23.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "TOTAL DEL PERÍODO",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Text(
+                    text = "Q %.2f".format(total),
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "${gastosDelMes.size} movimientos incluidos",
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 13.sp
+                )
+            }
+        }
+
+        Text(
+            text = "Gastos por categoría",
+            color = AzulOscuro,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (resumen.isEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "▤",
+                        color = AzulPrincipal,
+                        fontSize = 34.sp
+                    )
+                    Text(
+                        text = "Todavía no hay datos",
+                        color = AzulOscuro,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Cuando registres gastos, aparecerá aquí el resumen.",
+                        color = TextoSecundario,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            resumen.forEach { (categoria, cantidad) ->
+                val porcentaje = if (total > 0) {
+                    cantidad * 100 / total
+                } else {
+                    0.0
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(19.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 2.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(17.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
                                 text = categoria.name,
                                 color = AzulOscuro,
-                                fontWeight = FontWeight.SemiBold
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
                             )
 
                             Text(
-                                text = "Gastado: Q %.2f".format(cantidad),
-                                color = TextoSecundario
-                            )
-
-                            LinearProgressIndicator(
-                                progress = {
-                                    (porcentaje / 100).toFloat()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                color = AzulPrincipal
-                            )
-
-                            Text(
-                                text = "%.1f%% del total".format(porcentaje),
-                                color = TextoSecundario,
-                                fontSize = 12.sp
+                                text = "Q %.2f".format(cantidad),
+                                color = AzulPrincipal,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
+
+                        LinearProgressIndicator(
+                            progress = {
+                                (porcentaje / 100).toFloat()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp),
+                            color = AzulPrincipal,
+                            trackColor = Color(0xFFE2EAF3)
+                        )
+
+                        Text(
+                            text = "%.1f%% del total".format(porcentaje),
+                            color = TextoSecundario,
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
         }
     }
 }
+
+// TARJETA INDIVIDUAL DE CADA GASTO
 
 @Composable
 fun TarjetaGasto(
@@ -1009,7 +1272,7 @@ fun TarjetaGasto(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
@@ -1019,38 +1282,63 @@ fun TarjetaGasto(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                Row(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
                 ) {
-                    Text(
-                        text = gasto.descripcion,
-                        color = AzulOscuro,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Surface(
+                        color = Color(0xFFDCEBFA),
+                        shape = RoundedCornerShape(13.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.size(46.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Q",
+                                color = AzulPrincipal,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-                    Text(
-                        text = gasto.categoria.name,
-                        color = TextoSecundario,
-                        fontSize = 13.sp
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = gasto.descripcion,
+                            color = AzulOscuro,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = gasto.categoria.name,
+                            color = TextoSecundario,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
 
                 Text(
                     text = "Q %.2f".format(gasto.monto),
                     color = Rojo,
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
+
+            HorizontalDivider(color = Fondo)
 
             Text(
                 text = "Fecha: ${gasto.fecha}",
@@ -1060,18 +1348,27 @@ fun TarjetaGasto(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 Button(
                     onClick = alEditar,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(13.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AzulPrincipal
+                    )
                 ) {
                     Text("Editar")
                 }
 
                 OutlinedButton(
                     onClick = alEliminar,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(13.dp)
                 ) {
                     Text(
                         text = "Eliminar",
