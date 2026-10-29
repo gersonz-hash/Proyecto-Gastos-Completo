@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,15 +39,17 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
 
-private val Fondo = Color(0xFFF3F6FA)
-private val AzulPrincipal = Color(0xFF1565C0)
-private val AzulOscuro = Color(0xFF123B5D)
-private val TextoSecundario = Color(0xFF64748B)
-private val Rojo = Color(0xFFC62828)
-private val Verde = Color(0xFF23844B)
+private const val PREFERENCIAS_TEMA = "preferencias_tema"
+private const val CLAVE_MODO_OSCURO = "modo_oscuro"
+
+private val AzulPrincipal = Color(0xFF64B5F6)
+private val AzulOscuro = Color(0xFFF1F5F9)
+private val TextoSecundario = Color(0xFFB0BEC5)
+private val Rojo = Color(0xFFFF8A80)
+private val Verde = Color(0xFF69D9A0)
 
 private val ColoresGrafica = listOf(
-    Color(0xFF1565C0),
+    Color(0xFF64B5F6),
     Color(0xFF26A69A),
     Color(0xFFFFA726),
     Color(0xFFAB47BC),
@@ -92,15 +95,83 @@ private fun colorCategoria(nombre: String): Color {
 }
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
-            GastoscoreProgramacion2Theme {
+            val contexto = this@MainActivity
+
+            var modoOscuro by rememberSaveable {
+                mutableStateOf(
+                    contexto.getSharedPreferences(
+                        PREFERENCIAS_TEMA,
+                        MODE_PRIVATE
+                    ).getBoolean(CLAVE_MODO_OSCURO, true)
+                )
+            }
+
+            GastoscoreProgramacion2Theme(
+                darkTheme = modoOscuro
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Fondo
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    NavegacionGastos()
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.background
+                                )
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 4.dp
+                                ),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (modoOscuro) {
+                                    "Modo oscuro"
+                                } else {
+                                    "Modo claro"
+                                },
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            OutlinedButton(
+                                onClick = {
+                                    modoOscuro = !modoOscuro
+
+                                    contexto.getSharedPreferences(
+                                        PREFERENCIAS_TEMA,
+                                        MODE_PRIVATE
+                                    ).edit()
+                                        .putBoolean(
+                                            CLAVE_MODO_OSCURO,
+                                            modoOscuro
+                                        )
+                                        .apply()
+                                }
+                            ) {
+                                Text(
+                                    if (modoOscuro) "☀️ Claro" else "🌙 Oscuro"
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            NavegacionGastos()
+                        }
+                    }
                 }
             }
         }
@@ -113,28 +184,35 @@ fun NavegacionGastos() {
     var gastoEditando by remember { mutableStateOf<Gasto?>(null) }
 
     val context = LocalContext.current
+
     val modelo: GastosViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory
             .getInstance(context.applicationContext as Application)
     )
+
     val estado by modelo.estado.collectAsState()
 
     val mesActual = YearMonth.now().toString()
+
     val gastosMes = estado.transacciones.filter {
         it.fecha.startsWith(mesActual)
     }
+
     val totalMes = gastosMes.sumOf { it.monto }
 
     Scaffold(
-        containerColor = Fondo,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar(containerColor = Color.White) {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
                 listOf("Inicio", "Registrar", "Movimientos", "Reportes")
                     .forEach { nombre ->
                         NavigationBarItem(
                             selected = pantalla == nombre,
                             onClick = {
                                 pantalla = nombre
+
                                 if (nombre != "Registrar") {
                                     gastoEditando = null
                                 }
@@ -150,7 +228,9 @@ fun NavegacionGastos() {
                                     fontSize = 18.sp
                                 )
                             },
-                            label = { Text(nombre) }
+                            label = {
+                                Text(nombre)
+                            }
                         )
                     }
             }
@@ -160,14 +240,19 @@ fun NavegacionGastos() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when (pantalla) {
                 "Inicio" -> PantallaInicio(
                     total = totalMes,
                     cantidad = gastosMes.size,
                     gastos = gastosMes,
-                    irARegistro = { pantalla = "Registrar" },
-                    irAMovimientos = { pantalla = "Movimientos" }
+                    irARegistro = {
+                        pantalla = "Registrar"
+                    },
+                    irAMovimientos = {
+                        pantalla = "Movimientos"
+                    }
                 )
 
                 "Registrar" -> FormularioGasto(
@@ -201,15 +286,25 @@ fun NavegacionGastos() {
 }
 
 @Composable
-fun Encabezado(titulo: String, subtitulo: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+fun Encabezado(
+    titulo: String,
+    subtitulo: String
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
         Text(
             titulo,
             fontSize = 27.sp,
             fontWeight = FontWeight.Bold,
-            color = AzulOscuro
+            color = MaterialTheme.colorScheme.onBackground
         )
-        Text(subtitulo, fontSize = 14.sp, color = TextoSecundario)
+
+        Text(
+            subtitulo,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -226,12 +321,13 @@ fun PantallaInicio(
     val categorias = gastos
         .groupBy { it.categoria }
         .mapValues { (_, lista) -> lista.sumOf { it.monto } }
+
     val categoriaMayor = categorias.maxByOrNull { it.value }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Fondo)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
@@ -241,25 +337,38 @@ fun PantallaInicio(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("¡Hola!", color = TextoSecundario)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    "¡Hola!",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 Text(
                     "Control de gastos",
-                    color = AzulOscuro,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 27.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text("Tu resumen financiero", color = TextoSecundario)
+
+                Text(
+                    "Tu resumen financiero",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+
             Surface(
                 shape = RoundedCornerShape(18.dp),
-                color = Color(0xFFDCEBFA),
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.size(58.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         "Q",
-                        color = AzulPrincipal,
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 29.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -270,13 +379,18 @@ fun PantallaInicio(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = AzulPrincipal)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             Column(
                 modifier = Modifier
                     .background(
                         Brush.linearGradient(
-                            listOf(Color(0xFF1976D2), AzulOscuro)
+                            listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF0D2840)
+                            )
                         )
                     )
                     .padding(23.dp),
@@ -287,22 +401,32 @@ fun PantallaInicio(
                     color = Color.White.copy(alpha = 0.85f),
                     fontSize = 13.sp
                 )
+
                 Text(
                     formatoQ(total),
                     color = Color.White,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Bold
                 )
+
                 Text(
                     YearMonth.now().toString(),
                     color = Color.White.copy(alpha = 0.9f)
                 )
-                HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
+
+                HorizontalDivider(
+                    color = Color.White.copy(alpha = 0.25f)
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Gastos registrados", color = Color.White)
+                    Text(
+                        "Gastos registrados",
+                        color = Color.White
+                    )
+
                     Text(
                         cantidad.toString(),
                         color = Color.White,
@@ -314,31 +438,36 @@ fun PantallaInicio(
 
         Text(
             "Resumen financiero",
-            color = AzulOscuro,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             TarjetaResumen(
-                "Gastos del mes",
-                formatoQ(total),
-                "💸",
-                Modifier.weight(1f)
+                titulo = "Gastos del mes",
+                valor = formatoQ(total),
+                simbolo = "💸",
+                modifier = Modifier.weight(1f)
             )
+
             TarjetaResumen(
-                "Movimientos",
-                cantidad.toString(),
-                "📋",
-                Modifier.weight(1f),
-                Verde
+                titulo = "Movimientos",
+                valor = cantidad.toString(),
+                simbolo = "📋",
+                modifier = Modifier.weight(1f),
+                colorSimbolo = Verde
             )
         }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Column(
                 modifier = Modifier.padding(17.dp),
@@ -346,25 +475,27 @@ fun PantallaInicio(
             ) {
                 Text(
                     "🏆 Categoría con más gastos",
-                    color = AzulOscuro,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp
                 )
+
                 if (categoriaMayor == null) {
                     Text(
                         "Todavía no hay gastos registrados este mes.",
-                        color = TextoSecundario
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Text(
                         "${iconoCategoria(categoriaMayor.key.name)} " +
                                 categoriaMayor.key.name,
-                        color = AzulPrincipal,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
+
                     Text(
                         formatoQ(categoriaMayor.value),
-                        color = TextoSecundario
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -374,7 +505,7 @@ fun PantallaInicio(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFE5EFFB)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
             Column(
@@ -383,38 +514,46 @@ fun PantallaInicio(
             ) {
                 Text(
                     "💡 Consejo financiero",
-                    color = AzulOscuro,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
+
                 Text(
                     "Revisá tus reportes para identificar las categorías " +
                             "donde podés reducir tus gastos.",
-                    color = TextoSecundario
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
         Text(
             "Accesos rápidos",
-            color = AzulOscuro,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
 
         Button(
             onClick = irARegistro,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
             shape = RoundedCornerShape(15.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = AzulPrincipal
+                containerColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Text("➕ Registrar nuevo gasto")
+            Text(
+                "➕ Registrar nuevo gasto",
+                color = MaterialTheme.colorScheme.onPrimary
+            )
         }
 
         OutlinedButton(
             onClick = irAMovimientos,
-            modifier = Modifier.fillMaxWidth().height(54.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
             shape = RoundedCornerShape(15.dp)
         ) {
             Text("📋 Ver todos los movimientos")
@@ -433,7 +572,9 @@ private fun TarjetaResumen(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -441,9 +582,9 @@ private fun TarjetaResumen(
         ) {
             Surface(
                 color = if (colorSimbolo == Verde) {
-                    Color(0xFFE1F5E8)
+                    Color(0xFF183D2D)
                 } else {
-                    Color(0xFFDCEBFA)
+                    MaterialTheme.colorScheme.surfaceVariant
                 },
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -454,10 +595,16 @@ private fun TarjetaResumen(
                     Text(simbolo, fontSize = 22.sp)
                 }
             }
-            Text(titulo, color = TextoSecundario, fontSize = 13.sp)
+
+            Text(
+                titulo,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp
+            )
+
             Text(
                 valor,
-                color = AzulOscuro,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -480,18 +627,21 @@ fun FormularioGasto(
     var descripcion by remember(gastoInicial?.id) {
         mutableStateOf(gastoInicial?.descripcion ?: "")
     }
+
     var monto by remember(gastoInicial?.id) {
         mutableStateOf(gastoInicial?.monto?.toString() ?: "")
     }
+
     var categoria by remember(gastoInicial?.id) {
         mutableStateOf(gastoInicial?.categoria ?: Categoria.ALIMENTACION)
     }
+
     var menuAbierto by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Fondo)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
@@ -504,13 +654,20 @@ fun FormularioGasto(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
-                Text("Descripción", color = AzulOscuro, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Descripción",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
@@ -520,18 +677,33 @@ fun FormularioGasto(
                     singleLine = true
                 )
 
-                Text("Monto en quetzales", color = AzulOscuro, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Monto en quetzales",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+
                 OutlinedTextField(
                     value = monto,
                     onValueChange = { monto = it },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("0.00") },
-                    leadingIcon = { Text("Q", color = AzulPrincipal) },
+                    leadingIcon = {
+                        Text(
+                            "Q",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     shape = RoundedCornerShape(15.dp),
                     singleLine = true
                 )
 
-                Text("Categoría", color = AzulOscuro, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Categoría",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+
                 Box {
                     OutlinedButton(
                         onClick = { menuAbierto = true },
@@ -543,8 +715,10 @@ fun FormularioGasto(
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Start
                         )
+
                         Text("⌄")
                     }
+
                     DropdownMenu(
                         expanded = menuAbierto,
                         onDismissRequest = { menuAbierto = false }
@@ -552,7 +726,9 @@ fun FormularioGasto(
                         Categoria.entries.forEach { opcion ->
                             DropdownMenuItem(
                                 text = {
-                                    Text("${iconoCategoria(opcion.name)} ${opcion.name}")
+                                    Text(
+                                        "${iconoCategoria(opcion.name)} ${opcion.name}"
+                                    )
                                 },
                                 onClick = {
                                     categoria = opcion
@@ -586,7 +762,8 @@ fun FormularioGasto(
                                 descripcion = descripcion.trim(),
                                 monto = cantidad,
                                 categoria = categoria,
-                                fecha = gastoInicial?.fecha ?: LocalDate.now().toString()
+                                fecha = gastoInicial?.fecha
+                                    ?: LocalDate.now().toString()
                             )
 
                             val terminar: (String?) -> Unit = { error ->
@@ -600,6 +777,7 @@ fun FormularioGasto(
                                         },
                                         Toast.LENGTH_SHORT
                                     ).show()
+
                                     alGuardar()
                                 } else {
                                     Toast.makeText(
@@ -617,13 +795,22 @@ fun FormularioGasto(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     shape = RoundedCornerShape(15.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AzulPrincipal
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text(if (gastoInicial == null) "Guardar gasto" else "Actualizar gasto")
+                    Text(
+                        if (gastoInicial == null) {
+                            "Guardar gasto"
+                        } else {
+                            "Actualizar gasto"
+                        },
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
 
                 if (gastoInicial != null) {
@@ -639,7 +826,7 @@ fun FormularioGasto(
 
         Text(
             "Total histórico de gastos: ${formatoQ(estado.egresos)}",
-            color = TextoSecundario
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -662,13 +849,20 @@ fun PantallaMovimientos(
     var pendienteEliminar by remember { mutableStateOf<Gasto?>(null) }
 
     val meses = gastos.mapNotNull {
-        runCatching { YearMonth.parse(it.fecha.take(7)) }.getOrNull()
+        runCatching {
+            YearMonth.parse(it.fecha.take(7))
+        }.getOrNull()
     }.distinct().sortedDescending()
 
     val filtrados = gastos.filter { gasto ->
-        gasto.descripcion.contains(busqueda.trim(), ignoreCase = true) &&
-                (categoriaFiltro == null || gasto.categoria.name == categoriaFiltro) &&
-                (mesFiltro == "Todos" || gasto.fecha.startsWith(mesFiltro))
+        gasto.descripcion.contains(
+            busqueda.trim(),
+            ignoreCase = true
+        ) &&
+                (categoriaFiltro == null ||
+                        gasto.categoria.name == categoriaFiltro) &&
+                (mesFiltro == "Todos" ||
+                        gasto.fecha.startsWith(mesFiltro))
     }
 
     val totalFiltrado = filtrados.sumOf { it.monto }
@@ -676,10 +870,14 @@ fun PantallaMovimientos(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Fondo)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
-        Encabezado("Movimientos", "Consultá y administrá tus gastos")
+        Encabezado(
+            "Movimientos",
+            "Consultá y administrá tus gastos"
+        )
+
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
@@ -694,14 +892,23 @@ fun PantallaMovimientos(
 
         Spacer(Modifier.height(8.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Box(Modifier.weight(1f)) {
                 OutlinedButton(
                     onClick = { menuMes = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (mesFiltro == "Todos") "📅 Meses" else mesFiltro)
+                    Text(
+                        if (mesFiltro == "Todos") {
+                            "📅 Meses"
+                        } else {
+                            mesFiltro
+                        }
+                    )
                 }
+
                 DropdownMenu(
                     expanded = menuMes,
                     onDismissRequest = { menuMes = false }
@@ -713,6 +920,7 @@ fun PantallaMovimientos(
                             menuMes = false
                         }
                     )
+
                     meses.forEach { mes ->
                         DropdownMenuItem(
                             text = { Text(mes.toString()) },
@@ -730,8 +938,12 @@ fun PantallaMovimientos(
                     onClick = { menuCategoria = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(categoriaFiltro ?: "Categorías", maxLines = 1)
+                    Text(
+                        categoriaFiltro ?: "Categorías",
+                        maxLines = 1
+                    )
                 }
+
                 DropdownMenu(
                     expanded = menuCategoria,
                     onDismissRequest = { menuCategoria = false }
@@ -743,9 +955,14 @@ fun PantallaMovimientos(
                             menuCategoria = false
                         }
                     )
+
                     Categoria.entries.forEach { opcion ->
                         DropdownMenuItem(
-                            text = { Text("${iconoCategoria(opcion.name)} ${opcion.name}") },
+                            text = {
+                                Text(
+                                    "${iconoCategoria(opcion.name)} ${opcion.name}"
+                                )
+                            },
                             onClick = {
                                 categoriaFiltro = opcion.name
                                 menuCategoria = false
@@ -761,19 +978,32 @@ fun PantallaMovimientos(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(17.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(15.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(15.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("${filtrados.size} movimientos", color = AzulOscuro)
-                    Text("Total mostrado", color = TextoSecundario, fontSize = 12.sp)
+                    Text(
+                        "${filtrados.size} movimientos",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Text(
+                        "Total mostrado",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
                 }
+
                 Text(
                     formatoQ(totalFiltrado),
-                    color = AzulPrincipal,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -788,7 +1018,7 @@ fun PantallaMovimientos(
             ) {
                 Text(
                     "No hay movimientos para mostrar.",
-                    color = TextoSecundario
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -797,11 +1027,18 @@ fun PantallaMovimientos(
                 contentPadding = PaddingValues(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(filtrados, key = { it.id }) { gasto ->
+                items(
+                    filtrados,
+                    key = { it.id }
+                ) { gasto ->
                     TarjetaGasto(
                         gasto = gasto,
-                        alEliminar = { pendienteEliminar = gasto },
-                        alEditar = { alEditar(gasto) }
+                        alEliminar = {
+                            pendienteEliminar = gasto
+                        },
+                        alEditar = {
+                            alEditar(gasto)
+                        }
                     )
                 }
             }
@@ -810,13 +1047,20 @@ fun PantallaMovimientos(
 
     pendienteEliminar?.let { gasto ->
         AlertDialog(
-            onDismissRequest = { pendienteEliminar = null },
-            title = { Text("Eliminar gasto") },
-            text = { Text("¿Querés eliminar \"${gasto.descripcion}\"?") },
+            onDismissRequest = {
+                pendienteEliminar = null
+            },
+            title = {
+                Text("Eliminar gasto")
+            },
+            text = {
+                Text("¿Querés eliminar \"${gasto.descripcion}\"?")
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         pendienteEliminar = null
+
                         modelo.eliminar(gasto.id) { error ->
                             Toast.makeText(
                                 context,
@@ -826,11 +1070,18 @@ fun PantallaMovimientos(
                         }
                     }
                 ) {
-                    Text("Eliminar", color = Rojo)
+                    Text(
+                        "Eliminar",
+                        color = Rojo
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendienteEliminar = null }) {
+                TextButton(
+                    onClick = {
+                        pendienteEliminar = null
+                    }
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -846,12 +1097,15 @@ fun PantallaReportes(gastos: List<Gasto>) {
     var menuMes by remember { mutableStateOf(false) }
 
     val meses = gastos.mapNotNull {
-        runCatching { YearMonth.parse(it.fecha.take(7)) }.getOrNull()
+        runCatching {
+            YearMonth.parse(it.fecha.take(7))
+        }.getOrNull()
     }.distinct().sortedDescending()
 
     val gastosPeriodo = gastos.filter {
         mesFiltro == "Todos" || it.fecha.startsWith(mesFiltro)
     }
+
     val total = gastosPeriodo.sumOf { it.monto }
 
     val resumen = gastosPeriodo
@@ -870,30 +1124,47 @@ fun PantallaReportes(gastos: List<Gasto>) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Fondo)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
-        Encabezado("Mis reportes", "Gráficas y estadísticas de tus gastos")
+        Encabezado(
+            "Mis reportes",
+            "Gráficas y estadísticas de tus gastos"
+        )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
             Column(
                 modifier = Modifier.padding(15.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("📅 Período de consulta", color = AzulOscuro, fontWeight = FontWeight.Bold)
+                Text(
+                    "📅 Período de consulta",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+
                 Box {
                     OutlinedButton(
                         onClick = { menuMes = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (mesFiltro == "Todos") "Todos los meses" else mesFiltro)
+                        Text(
+                            if (mesFiltro == "Todos") {
+                                "Todos los meses"
+                            } else {
+                                mesFiltro
+                            }
+                        )
                     }
+
                     DropdownMenu(
                         expanded = menuMes,
                         onDismissRequest = { menuMes = false }
@@ -905,6 +1176,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
                                 menuMes = false
                             }
                         )
+
                         meses.forEach { mes ->
                             DropdownMenuItem(
                                 text = { Text(mes.toString()) },
@@ -922,23 +1194,35 @@ fun PantallaReportes(gastos: List<Gasto>) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = AzulPrincipal)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             Column(
                 modifier = Modifier
                     .background(
-                        Brush.linearGradient(listOf(Color(0xFF1976D2), AzulOscuro))
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF0D2840)
+                            )
+                        )
                     )
                     .padding(21.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("TOTAL DEL PERÍODO", color = Color.White.copy(alpha = 0.85f))
+                Text(
+                    "TOTAL DEL PERÍODO",
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+
                 Text(
                     formatoQ(total),
                     color = Color.White,
                     fontSize = 31.sp,
                     fontWeight = FontWeight.Bold
                 )
+
                 Text(
                     "${gastosPeriodo.size} gastos registrados",
                     color = Color.White
@@ -948,7 +1232,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
 
         Text(
             "Distribución por categoría",
-            color = AzulOscuro,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
@@ -956,22 +1240,28 @@ fun PantallaReportes(gastos: List<Gasto>) {
         if (resumen.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Text(
                     "📊 Todavía no hay datos suficientes para mostrar gráficas.",
                     modifier = Modifier.padding(22.dp),
-                    color = TextoSecundario
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     GraficaCircular(resumen, total)
@@ -981,33 +1271,44 @@ fun PantallaReportes(gastos: List<Gasto>) {
                     resumen.forEachIndexed { index, item ->
                         val porcentaje = if (total > 0) {
                             item.second * 100.0 / total
-                        } else 0.0
+                        } else {
+                            0.0
+                        }
 
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
                                 modifier = Modifier.size(13.dp),
-                                color = ColoresGrafica[index % ColoresGrafica.size],
+                                color = ColoresGrafica[
+                                    index % ColoresGrafica.size
+                                ],
                                 shape = RoundedCornerShape(4.dp)
                             ) {}
+
                             Spacer(Modifier.width(8.dp))
+
                             Text(
                                 "${iconoCategoria(item.first.name)} ${item.first.name}",
                                 modifier = Modifier.weight(1f),
-                                color = AzulOscuro,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 13.sp
                             )
+
                             Text(
                                 String.format(Locale.US, "%.1f%%", porcentaje),
-                                color = TextoSecundario,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
+
                             Spacer(Modifier.width(8.dp))
+
                             Text(
                                 formatoQ(item.second),
-                                color = AzulPrincipal,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
@@ -1019,39 +1320,64 @@ fun PantallaReportes(gastos: List<Gasto>) {
 
         Text(
             "Comparación mensual",
-            color = AzulOscuro,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
 
         if (conteoMeses.isEmpty()) {
-            Text("No hay datos mensuales disponibles.", color = TextoSecundario)
+            Text(
+                "No hay datos mensuales disponibles.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(13.dp)
                 ) {
-                    val maximo = conteoMeses.maxOf { it.second }.coerceAtLeast(1.0)
+                    val maximo = conteoMeses
+                        .maxOf { it.second }
+                        .coerceAtLeast(1.0)
 
                     conteoMeses.forEach { (mes, monto) ->
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(mes, color = AzulOscuro, fontWeight = FontWeight.SemiBold)
-                                Text(formatoQ(monto), color = AzulPrincipal, fontWeight = FontWeight.Bold)
+                                Text(
+                                    mes,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+
+                                Text(
+                                    formatoQ(monto),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
+
                             LinearProgressIndicator(
-                                progress = { (monto / maximo).toFloat().coerceIn(0f, 1f) },
-                                modifier = Modifier.fillMaxWidth().height(9.dp),
-                                color = AzulPrincipal,
-                                trackColor = Color(0xFFE2EAF3)
+                                progress = {
+                                    (monto / maximo)
+                                        .toFloat()
+                                        .coerceIn(0f, 1f)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(9.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
                     }
@@ -1069,35 +1395,61 @@ private fun GraficaCircular(
     total: Double
 ) {
     Box(
-        modifier = Modifier.fillMaxWidth().height(220.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.size(190.dp)) {
+        Canvas(
+            modifier = Modifier.size(190.dp)
+        ) {
             if (total > 0.0) {
                 var anguloInicial = -90f
                 val grosor = 28.dp.toPx()
 
                 resumen.forEachIndexed { index, item ->
-                    val barrido = (item.second / total * 360.0).toFloat()
+                    val barrido = (
+                            item.second / total * 360.0
+                            ).toFloat()
+
                     drawArc(
-                        color = ColoresGrafica[index % ColoresGrafica.size],
+                        color = ColoresGrafica[
+                            index % ColoresGrafica.size
+                        ],
                         startAngle = anguloInicial,
                         sweepAngle = barrido,
                         useCenter = false,
-                        topLeft = Offset(grosor / 2, grosor / 2),
-                        size = Size(size.width - grosor, size.height - grosor),
-                        style = Stroke(width = grosor, cap = StrokeCap.Butt)
+                        topLeft = Offset(
+                            grosor / 2,
+                            grosor / 2
+                        ),
+                        size = Size(
+                            size.width - grosor,
+                            size.height - grosor
+                        ),
+                        style = Stroke(
+                            width = grosor,
+                            cap = StrokeCap.Butt
+                        )
                     )
+
                     anguloInicial += barrido
                 }
             }
         }
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Total", color = TextoSecundario, fontSize = 13.sp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Total",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp
+            )
+
             Text(
                 formatoQ(total),
-                color = AzulOscuro,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp
             )
@@ -1116,8 +1468,12 @@ fun TarjetaGasto(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(
             modifier = Modifier.padding(15.dp),
@@ -1135,26 +1491,33 @@ fun TarjetaGasto(
                         modifier = Modifier.size(46.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(iconoCategoria(gasto.categoria.name), fontSize = 24.sp)
+                        Text(
+                            iconoCategoria(gasto.categoria.name),
+                            fontSize = 24.sp
+                        )
                     }
                 }
 
                 Spacer(Modifier.width(10.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         gasto.descripcion,
-                        color = AzulOscuro,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
+
                     Text(
                         gasto.categoria.name,
-                        color = TextoSecundario,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
+
                     Text(
                         gasto.fecha,
-                        color = TextoSecundario,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
                 }
@@ -1166,27 +1529,40 @@ fun TarjetaGasto(
                 )
             }
 
-            HorizontalDivider(color = Fondo)
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.surfaceVariant
+            )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Button(
                     onClick = alEditar,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AzulPrincipal
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("✏️ Editar")
+                    Text(
+                        "✏️ Editar",
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
 
                 OutlinedButton(
                     onClick = alEliminar,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFFCDD2))
+                    border = BorderStroke(
+                        1.dp,
+                        Color(0xFFFF8A80)
+                    )
                 ) {
-                    Text("🗑️ Eliminar", color = Rojo)
+                    Text(
+                        "🗑️ Eliminar",
+                        color = Rojo
+                    )
                 }
             }
         }
