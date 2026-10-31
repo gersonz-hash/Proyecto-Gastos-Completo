@@ -44,9 +44,10 @@ import java.util.Locale
 private const val PREFERENCIAS_TEMA = "preferencias_tema"
 private const val CLAVE_MODO_OSCURO = "modo_oscuro"
 
+private const val INGRESO = "INGRESO"
+private const val EGRESO = "EGRESO"
+
 private val AzulPrincipal = Color(0xFF64B5F6)
-private val AzulOscuro = Color(0xFFF1F5F9)
-private val TextoSecundario = Color(0xFFB0BEC5)
 private val Rojo = Color(0xFFFF8A80)
 private val Verde = Color(0xFF69D9A0)
 
@@ -64,7 +65,6 @@ private val ColoresGrafica = listOf(
 private fun formatoQ(valor: Double): String =
     "Q " + String.format(Locale.US, "%.2f", valor)
 
-// Convierte yyyy-MM-dd a dd/MM/yyyy para mostrar la fecha.
 private fun formatoFecha(fecha: String): String {
     return try {
         LocalDate.parse(fecha).format(
@@ -195,6 +195,7 @@ class MainActivity : ComponentActivity() {
 fun NavegacionGastos() {
     var pantalla by remember { mutableStateOf("Inicio") }
     var gastoEditando by remember { mutableStateOf<Gasto?>(null) }
+    var tipoEditando by remember { mutableStateOf(EGRESO) }
 
     val context = LocalContext.current
 
@@ -211,7 +212,15 @@ fun NavegacionGastos() {
         it.fecha.startsWith(mesActual)
     }
 
-    val totalMes = gastosMes.sumOf { it.monto }
+    val ingresosMes = gastosMes
+        .filter { estado.tipos[it.id] == INGRESO }
+        .sumOf { it.monto }
+
+    val egresosMes = gastosMes
+        .filter { estado.tipos[it.id] != INGRESO }
+        .sumOf { it.monto }
+
+    val saldoMes = ingresosMes - egresosMes
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -228,6 +237,9 @@ fun NavegacionGastos() {
 
                                 if (nombre != "Registrar") {
                                     gastoEditando = null
+                                } else {
+                                    gastoEditando = null
+                                    tipoEditando = EGRESO
                                 }
                             },
                             icon = {
@@ -257,10 +269,15 @@ fun NavegacionGastos() {
         ) {
             when (pantalla) {
                 "Inicio" -> PantallaInicio(
-                    total = totalMes,
+                    ingresos = ingresosMes,
+                    egresos = egresosMes,
+                    saldo = saldoMes,
                     cantidad = gastosMes.size,
                     gastos = gastosMes,
+                    tipos = estado.tipos,
                     irARegistro = {
+                        gastoEditando = null
+                        tipoEditando = EGRESO
                         pantalla = "Registrar"
                     },
                     irAMovimientos = {
@@ -271,6 +288,7 @@ fun NavegacionGastos() {
                 "Registrar" -> FormularioGasto(
                     modelo = modelo,
                     gastoInicial = gastoEditando,
+                    tipoInicial = tipoEditando,
                     alGuardar = {
                         gastoEditando = null
                         pantalla = "Movimientos"
@@ -283,15 +301,18 @@ fun NavegacionGastos() {
 
                 "Movimientos" -> PantallaMovimientos(
                     gastos = estado.transacciones,
+                    tipos = estado.tipos,
                     modelo = modelo,
-                    alEditar = { gasto ->
+                    alEditar = { gasto, tipo ->
                         gastoEditando = gasto
+                        tipoEditando = tipo
                         pantalla = "Registrar"
                     }
                 )
 
                 "Reportes" -> PantallaReportes(
-                    gastos = estado.transacciones
+                    gastos = estado.transacciones,
+                    tipos = estado.tipos
                 )
             }
         }
@@ -321,21 +342,25 @@ fun Encabezado(
     }
 }
 
-// INICIO: RESUMEN DEL MES ACTUAL
+// INICIO
 
 @Composable
 fun PantallaInicio(
-    total: Double,
+    ingresos: Double,
+    egresos: Double,
+    saldo: Double,
     cantidad: Int,
     gastos: List<Gasto>,
+    tipos: Map<Int, String>,
     irARegistro: () -> Unit,
     irAMovimientos: () -> Unit
 ) {
-    val categorias = gastos
+    val categoriasEgresos = gastos
+        .filter { tipos[it.id] != INGRESO }
         .groupBy { it.categoria }
         .mapValues { (_, lista) -> lista.sumOf { it.monto } }
 
-    val categoriaMayor = categorias.maxByOrNull { it.value }
+    val categoriaMayor = categoriasEgresos.maxByOrNull { it.value }
 
     Column(
         modifier = Modifier
@@ -376,9 +401,7 @@ fun PantallaInicio(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.size(58.dp)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(contentAlignment = Alignment.Center) {
                     Text(
                         "Q",
                         color = MaterialTheme.colorScheme.primary,
@@ -410,13 +433,13 @@ fun PantallaInicio(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "GASTOS DEL MES",
+                    "SALDO DISPONIBLE DEL MES",
                     color = Color.White.copy(alpha = 0.85f),
                     fontSize = 13.sp
                 )
 
                 Text(
-                    formatoQ(total),
+                    formatoQ(saldo),
                     color = Color.White,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Bold
@@ -435,11 +458,7 @@ fun PantallaInicio(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        "Gastos registrados",
-                        color = Color.White
-                    )
-
+                    Text("Movimientos registrados", color = Color.White)
                     Text(
                         cantidad.toString(),
                         color = Color.White,
@@ -460,18 +479,19 @@ fun PantallaInicio(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             TarjetaResumen(
-                titulo = "Gastos del mes",
-                valor = formatoQ(total),
-                simbolo = "💸",
-                modifier = Modifier.weight(1f)
+                titulo = "Ingresos",
+                valor = formatoQ(ingresos),
+                simbolo = "💰",
+                modifier = Modifier.weight(1f),
+                colorSimbolo = Verde
             )
 
             TarjetaResumen(
-                titulo = "Movimientos",
-                valor = cantidad.toString(),
-                simbolo = "📋",
+                titulo = "Egresos",
+                valor = formatoQ(egresos),
+                simbolo = "💸",
                 modifier = Modifier.weight(1f),
-                colorSimbolo = Verde
+                colorSimbolo = Rojo
             )
         }
 
@@ -495,7 +515,7 @@ fun PantallaInicio(
 
                 if (categoriaMayor == null) {
                     Text(
-                        "Todavía no hay gastos registrados este mes.",
+                        "Todavía no hay egresos registrados este mes.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
@@ -551,15 +571,9 @@ fun PantallaInicio(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
-            shape = RoundedCornerShape(15.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+            shape = RoundedCornerShape(15.dp)
         ) {
-            Text(
-                "➕ Registrar nuevo gasto",
-                color = MaterialTheme.colorScheme.onPrimary
-            )
+            Text("➕ Registrar movimiento")
         }
 
         OutlinedButton(
@@ -594,11 +608,7 @@ private fun TarjetaResumen(
             verticalArrangement = Arrangement.spacedBy(9.dp)
         ) {
             Surface(
-                color = if (colorSimbolo == Verde) {
-                    Color(0xFF183D2D)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
+                color = colorSimbolo.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Box(
@@ -625,17 +635,17 @@ private fun TarjetaResumen(
     }
 }
 
-// REGISTRAR Y EDITAR GASTOS
+// FORMULARIO DE INGRESOS Y EGRESOS
 
 @Composable
 fun FormularioGasto(
     modelo: GastosViewModel,
     gastoInicial: Gasto?,
+    tipoInicial: String,
     alGuardar: () -> Unit,
     alCancelar: () -> Unit
 ) {
     val context = LocalContext.current
-    val estado by modelo.estado.collectAsState()
 
     var descripcion by remember(gastoInicial?.id) {
         mutableStateOf(gastoInicial?.descripcion ?: "")
@@ -646,10 +656,18 @@ fun FormularioGasto(
     }
 
     var categoria by remember(gastoInicial?.id) {
-        mutableStateOf(gastoInicial?.categoria ?: Categoria.ALIMENTACION)
+        mutableStateOf(
+            gastoInicial?.categoria ?: Categoria.entries.first()
+        )
     }
 
-    var menuAbierto by remember { mutableStateOf(false) }
+    var tipoMovimiento by remember(gastoInicial?.id, tipoInicial) {
+        mutableStateOf(tipoInicial)
+    }
+
+    var menuAbierto by remember {
+        mutableStateOf(false)
+    }
 
     Column(
         modifier = Modifier
@@ -660,8 +678,8 @@ fun FormularioGasto(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         Encabezado(
-            if (gastoInicial == null) "Nuevo gasto" else "Editar gasto",
-            "Ingresá los datos de tu gasto"
+            if (gastoInicial == null) "Nuevo movimiento" else "Editar movimiento",
+            "Ingresá los datos del movimiento"
         )
 
         Card(
@@ -676,6 +694,31 @@ fun FormularioGasto(
                 verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 Text(
+                    "Tipo de movimiento",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = tipoMovimiento == INGRESO,
+                        onClick = { tipoMovimiento = INGRESO },
+                        label = { Text("💰 Ingreso") },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    FilterChip(
+                        selected = tipoMovimiento == EGRESO,
+                        onClick = { tipoMovimiento = EGRESO },
+                        label = { Text("💸 Egreso") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Text(
                     "Descripción",
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
@@ -685,7 +728,7 @@ fun FormularioGasto(
                     value = descripcion,
                     onValueChange = { descripcion = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Ej. Almuerzo") },
+                    placeholder = { Text("Ej. Salario, almuerzo") },
                     shape = RoundedCornerShape(15.dp),
                     singleLine = true
                 )
@@ -728,7 +771,6 @@ fun FormularioGasto(
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Start
                         )
-
                         Text("⌄")
                     }
 
@@ -770,21 +812,13 @@ fun FormularioGasto(
                                 Toast.LENGTH_LONG
                             ).show()
                         } else {
-                            // Para un gasto nuevo se obtiene la fecha actual
-                            // justo cuando se presiona Guardar gasto.
-                            // Al editar, se conserva la fecha original.
-                            val fechaGasto = if (gastoInicial == null) {
-                                LocalDate.now().toString()
-                            } else {
-                                gastoInicial.fecha
-                            }
-
-                            val gasto = Gasto(
+                            val nuevoGasto = Gasto(
                                 id = gastoInicial?.id ?: 0,
                                 descripcion = descripcion.trim(),
                                 monto = cantidad,
                                 categoria = categoria,
-                                fecha = fechaGasto
+                                fecha = gastoInicial?.fecha
+                                    ?: LocalDate.now().toString()
                             )
 
                             val terminar: (String?) -> Unit = { error ->
@@ -792,9 +826,9 @@ fun FormularioGasto(
                                     Toast.makeText(
                                         context,
                                         if (gastoInicial == null) {
-                                            "Gasto registrado correctamente"
+                                            "Movimiento registrado correctamente"
                                         } else {
-                                            "Gasto actualizado correctamente"
+                                            "Movimiento actualizado correctamente"
                                         },
                                         Toast.LENGTH_SHORT
                                     ).show()
@@ -810,9 +844,17 @@ fun FormularioGasto(
                             }
 
                             if (gastoInicial == null) {
-                                modelo.registrar(gasto, terminar)
+                                modelo.registrar(
+                                    nuevoGasto,
+                                    tipoMovimiento,
+                                    terminar
+                                )
                             } else {
-                                modelo.editar(gasto, terminar)
+                                modelo.editar(
+                                    nuevoGasto,
+                                    tipoMovimiento,
+                                    terminar
+                                )
                             }
                         }
                     },
@@ -821,34 +863,30 @@ fun FormularioGasto(
                         .height(54.dp),
                     shape = RoundedCornerShape(15.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = if (tipoMovimiento == INGRESO) {
+                            Verde
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
                     )
                 ) {
                     Text(
                         if (gastoInicial == null) {
-                            "Guardar gasto"
+                            "Guardar movimiento"
                         } else {
-                            "Actualizar gasto"
-                        },
-                        color = MaterialTheme.colorScheme.onPrimary
+                            "Actualizar movimiento"
+                        }
                     )
                 }
 
-                if (gastoInicial != null) {
-                    OutlinedButton(
-                        onClick = alCancelar,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Cancelar edición")
-                    }
+                OutlinedButton(
+                    onClick = alCancelar,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancelar")
                 }
             }
         }
-
-        Text(
-            "Total histórico de gastos: ${formatoQ(estado.egresos)}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -857,13 +895,15 @@ fun FormularioGasto(
 @Composable
 fun PantallaMovimientos(
     gastos: List<Gasto>,
+    tipos: Map<Int, String>,
     modelo: GastosViewModel,
-    alEditar: (Gasto) -> Unit
+    alEditar: (Gasto, String) -> Unit
 ) {
     val context = LocalContext.current
 
     var busqueda by remember { mutableStateOf("") }
     var categoriaFiltro by remember { mutableStateOf<String?>(null) }
+    var tipoFiltro by remember { mutableStateOf("TODOS") }
     var mesFiltro by remember { mutableStateOf("Todos") }
     var menuCategoria by remember { mutableStateOf(false) }
     var menuMes by remember { mutableStateOf(false) }
@@ -876,17 +916,32 @@ fun PantallaMovimientos(
     }.distinct().sortedDescending()
 
     val filtrados = gastos.filter { gasto ->
+        val tipo = tipos[gasto.id] ?: EGRESO
+
+        val coincideTipo = when (tipoFiltro) {
+            INGRESO -> tipo == INGRESO
+            EGRESO -> tipo == EGRESO
+            else -> true
+        }
+
         gasto.descripcion.contains(
             busqueda.trim(),
             ignoreCase = true
         ) &&
+                coincideTipo &&
                 (categoriaFiltro == null ||
                         gasto.categoria.name == categoriaFiltro) &&
                 (mesFiltro == "Todos" ||
                         gasto.fecha.startsWith(mesFiltro))
     }
 
-    val totalFiltrado = filtrados.sumOf { it.monto }
+    val totalIngresos = filtrados
+        .filter { tipos[it.id] == INGRESO }
+        .sumOf { it.monto }
+
+    val totalEgresos = filtrados
+        .filter { tipos[it.id] != INGRESO }
+        .sumOf { it.monto }
 
     Column(
         modifier = Modifier
@@ -896,7 +951,7 @@ fun PantallaMovimientos(
     ) {
         Encabezado(
             "Movimientos",
-            "Consultá y administrá tus gastos"
+            "Consultá y administrá tus ingresos y egresos"
         )
 
         Spacer(Modifier.height(12.dp))
@@ -912,6 +967,26 @@ fun PantallaMovimientos(
         )
 
         Spacer(Modifier.height(8.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            listOf("TODOS", INGRESO, EGRESO).forEach { opcion ->
+                FilterChip(
+                    selected = tipoFiltro == opcion,
+                    onClick = { tipoFiltro = opcion },
+                    label = {
+                        Text(
+                            when (opcion) {
+                                "TODOS" -> "Todos"
+                                INGRESO -> "Ingresos"
+                                else -> "Egresos"
+                            }
+                        )
+                    }
+                )
+            }
+        }
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1003,30 +1078,57 @@ fun PantallaMovimientos(
                 containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(15.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                Column {
-                    Text(
-                        "${filtrados.size} movimientos",
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                Text(
+                    "${filtrados.size} movimientos",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Ingresos", color = Verde)
                     Text(
-                        "Total mostrado",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp
+                        formatoQ(totalIngresos),
+                        color = Verde,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
-                Text(
-                    formatoQ(totalFiltrado),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Egresos", color = Rojo)
+                    Text(
+                        formatoQ(totalEgresos),
+                        color = Rojo,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Saldo mostrado",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        formatoQ(totalIngresos - totalEgresos),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
@@ -1052,13 +1154,16 @@ fun PantallaMovimientos(
                     filtrados,
                     key = { it.id }
                 ) { gasto ->
+                    val tipo = tipos[gasto.id] ?: EGRESO
+
                     TarjetaGasto(
                         gasto = gasto,
+                        tipo = tipo,
                         alEliminar = {
                             pendienteEliminar = gasto
                         },
                         alEditar = {
-                            alEditar(gasto)
+                            alEditar(gasto, tipo)
                         }
                     )
                 }
@@ -1072,7 +1177,7 @@ fun PantallaMovimientos(
                 pendienteEliminar = null
             },
             title = {
-                Text("Eliminar gasto")
+                Text("Eliminar movimiento")
             },
             text = {
                 Text("¿Querés eliminar \"${gasto.descripcion}\"?")
@@ -1085,16 +1190,13 @@ fun PantallaMovimientos(
                         modelo.eliminar(gasto.id) { error ->
                             Toast.makeText(
                                 context,
-                                error ?: "Gasto eliminado correctamente",
+                                error ?: "Movimiento eliminado correctamente",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
                     }
                 ) {
-                    Text(
-                        "Eliminar",
-                        color = Rojo
-                    )
+                    Text("Eliminar", color = Rojo)
                 }
             },
             dismissButton = {
@@ -1110,10 +1212,13 @@ fun PantallaMovimientos(
     }
 }
 
-// REPORTES Y ESTADÍSTICAS
+// REPORTES
 
 @Composable
-fun PantallaReportes(gastos: List<Gasto>) {
+fun PantallaReportes(
+    gastos: List<Gasto>,
+    tipos: Map<Int, String>
+) {
     var mesFiltro by remember { mutableStateOf("Todos") }
     var menuMes by remember { mutableStateOf(false) }
 
@@ -1127,15 +1232,33 @@ fun PantallaReportes(gastos: List<Gasto>) {
         mesFiltro == "Todos" || it.fecha.startsWith(mesFiltro)
     }
 
-    val total = gastosPeriodo.sumOf { it.monto }
+    val ingresosPeriodo = gastosPeriodo.filter {
+        tipos[it.id] == INGRESO
+    }
 
-    val resumen = gastosPeriodo
+    val egresosPeriodo = gastosPeriodo.filter {
+        tipos[it.id] != INGRESO
+    }
+
+    val totalIngresos = ingresosPeriodo.sumOf { it.monto }
+    val totalEgresos = egresosPeriodo.sumOf { it.monto }
+    val saldo = totalIngresos - totalEgresos
+
+    val categoriasEgresos = egresosPeriodo
         .groupBy { it.categoria }
         .mapValues { (_, lista) -> lista.sumOf { it.monto } }
         .toList()
         .sortedByDescending { it.second }
 
-    val conteoMeses = gastos.groupBy { it.fecha.take(7) }
+    val categoriasIngresos = ingresosPeriodo
+        .groupBy { it.categoria }
+        .mapValues { (_, lista) -> lista.sumOf { it.monto } }
+        .toList()
+        .sortedByDescending { it.second }
+
+    val conteoMeses = gastos
+        .filter { tipos[it.id] != INGRESO }
+        .groupBy { it.fecha.take(7) }
         .mapValues { (_, lista) -> lista.sumOf { it.monto } }
         .toList()
         .sortedByDescending { it.first }
@@ -1152,7 +1275,7 @@ fun PantallaReportes(gastos: List<Gasto>) {
     ) {
         Encabezado(
             "Mis reportes",
-            "Gráficas y estadísticas de tus gastos"
+            "Estadísticas de tus ingresos y egresos"
         )
 
         Card(
@@ -1212,135 +1335,53 @@ fun PantallaReportes(gastos: List<Gasto>) {
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color(0xFF1976D2),
-                                Color(0xFF0D2840)
-                            )
-                        )
-                    )
-                    .padding(21.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    "TOTAL DEL PERÍODO",
-                    color = Color.White.copy(alpha = 0.85f)
-                )
+        TarjetaResumen(
+            titulo = "Total de ingresos",
+            valor = formatoQ(totalIngresos),
+            simbolo = "💰",
+            colorSimbolo = Verde
+        )
 
-                Text(
-                    formatoQ(total),
-                    color = Color.White,
-                    fontSize = 31.sp,
-                    fontWeight = FontWeight.Bold
-                )
+        TarjetaResumen(
+            titulo = "Total de egresos",
+            valor = formatoQ(totalEgresos),
+            simbolo = "💸",
+            colorSimbolo = Rojo
+        )
 
-                Text(
-                    "${gastosPeriodo.size} gastos registrados",
-                    color = Color.White
-                )
-            }
-        }
+        TarjetaResumen(
+            titulo = "Saldo del período",
+            valor = formatoQ(saldo),
+            simbolo = "💳",
+            colorSimbolo = AzulPrincipal
+        )
 
         Text(
-            "Distribución por categoría",
+            "Egresos por categoría",
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
 
-        if (resumen.isEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Text(
-                    "📊 Todavía no hay datos suficientes para mostrar gráficas.",
-                    modifier = Modifier.padding(22.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    GraficaCircular(resumen, total)
-
-                    Spacer(Modifier.height(10.dp))
-
-                    resumen.forEachIndexed { index, item ->
-                        val porcentaje = if (total > 0) {
-                            item.second * 100.0 / total
-                        } else {
-                            0.0
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(13.dp),
-                                color = ColoresGrafica[
-                                    index % ColoresGrafica.size
-                                ],
-                                shape = RoundedCornerShape(4.dp)
-                            ) {}
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Text(
-                                "${iconoCategoria(item.first.name)} ${item.first.name}",
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 13.sp
-                            )
-
-                            Text(
-                                String.format(Locale.US, "%.1f%%", porcentaje),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Text(
-                                formatoQ(item.second),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        SeccionGrafica(
+            resumen = categoriasEgresos,
+            mensajeVacio = "Todavía no hay egresos registrados."
+        )
 
         Text(
-            "Comparación mensual",
+            "Ingresos por categoría",
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        SeccionGrafica(
+            resumen = categoriasIngresos,
+            mensajeVacio = "Todavía no hay ingresos registrados."
+        )
+
+        Text(
+            "Comparación mensual de egresos",
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
@@ -1407,6 +1448,95 @@ fun PantallaReportes(gastos: List<Gasto>) {
         }
 
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun SeccionGrafica(
+    resumen: List<Pair<Categoria, Double>>,
+    mensajeVacio: String
+) {
+    val total = resumen.sumOf { it.second }
+
+    if (resumen.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Text(
+                mensajeVacio,
+                modifier = Modifier.padding(22.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                GraficaCircular(resumen, total)
+
+                Spacer(Modifier.height(10.dp))
+
+                resumen.forEachIndexed { index, item ->
+                    val porcentaje = if (total > 0) {
+                        item.second * 100.0 / total
+                    } else {
+                        0.0
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(13.dp),
+                            color = ColoresGrafica[
+                                index % ColoresGrafica.size
+                            ],
+                            shape = RoundedCornerShape(4.dp)
+                        ) {}
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(
+                            "${iconoCategoria(item.first.name)} ${item.first.name}",
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 13.sp
+                        )
+
+                        Text(
+                            String.format(Locale.US, "%.1f%%", porcentaje),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(
+                            formatoQ(item.second),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1483,9 +1613,14 @@ private fun GraficaCircular(
 @Composable
 fun TarjetaGasto(
     gasto: Gasto,
+    tipo: String,
     alEliminar: () -> Unit,
     alEditar: () -> Unit
 ) {
+    val esIngreso = tipo == INGRESO
+    val colorTipo = if (esIngreso) Verde else Rojo
+    val signo = if (esIngreso) "+" else "-"
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -1536,17 +1671,23 @@ fun TarjetaGasto(
                         fontSize = 12.sp
                     )
 
-                    // Mostrar la fecha como dd/MM/yyyy.
                     Text(
                         formatoFecha(gasto.fecha),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
+
+                    Text(
+                        if (esIngreso) "Ingreso" else "Egreso",
+                        color = colorTipo,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 Text(
-                    formatoQ(gasto.monto),
-                    color = Rojo,
+                    "$signo ${formatoQ(gasto.monto)}",
+                    color = colorTipo,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1561,25 +1702,16 @@ fun TarjetaGasto(
                 Button(
                     onClick = alEditar,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        "✏️ Editar",
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Text("✏️ Editar")
                 }
 
                 OutlinedButton(
                     onClick = alEliminar,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(
-                        1.dp,
-                        Color(0xFFFF8A80)
-                    )
+                    border = BorderStroke(1.dp, Rojo)
                 ) {
                     Text(
                         "🗑️ Eliminar",

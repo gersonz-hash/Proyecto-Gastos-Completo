@@ -5,10 +5,9 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [GastoEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-
     abstract fun gastoDao(): GastoDao
 }

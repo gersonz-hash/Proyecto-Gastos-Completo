@@ -48,9 +48,11 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
     val estado by modelo.estado.collectAsState()
 
     val mesActual = YearMonth.now().toString()
-    val gastosMes = estado.transacciones.filter {
-        it.fecha.startsWith(mesActual)
+
+    val gastosMes = estado.transacciones.filter { gasto ->
+        gasto.fecha.startsWith(mesActual)
     }
+
     val totalMes = gastosMes.sumOf { it.monto }
 
     val opciones = listOf(
@@ -87,22 +89,29 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
                                 contentDescription = opcion.titulo
                             )
                         },
-                        label = { Text(opcion.titulo) }
+                        label = {
+                            Text(opcion.titulo)
+                        }
                     )
                 }
             }
         }
     ) { paddingValues ->
+
         NavHost(
             navController = navController,
             startDestination = "inicio",
             modifier = Modifier.padding(paddingValues)
         ) {
+
             composable("inicio") {
                 PantallaInicio(
-                    total = totalMes,
+                    ingresos = estado.ingresos,
+                    egresos = estado.egresos,
+                    saldo = estado.ingresos - estado.egresos,
                     cantidad = gastosMes.size,
                     gastos = gastosMes,
+                    tipos = estado.tipos,
                     irARegistro = {
                         navController.navigate("registrar")
                     },
@@ -116,6 +125,7 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
                 FormularioGasto(
                     modelo = modelo,
                     gastoInicial = null,
+                    tipoInicial = "EGRESO",
                     alGuardar = {
                         navController.navigate("movimientos") {
                             launchSingleTop = true
@@ -130,17 +140,23 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
             composable("movimientos") {
                 PantallaMovimientos(
                     gastos = estado.transacciones,
+                    tipos = estado.tipos,
                     modelo = modelo,
-                    alEditar = { gasto: Gasto ->
-                        navController.navigate("editar/${gasto.id}")
+                    alEditar = { gasto: Gasto, tipo: String ->
+                        navController.navigate(
+                            "editar/${gasto.id}/$tipo"
+                        )
                     }
                 )
             }
 
-            composable("editar/{gastoId}") { entrada ->
+            composable("editar/{gastoId}/{tipo}") { entrada ->
                 val gastoId = entrada.arguments
                     ?.getString("gastoId")
                     ?.toIntOrNull()
+
+                val tipo = entrada.arguments
+                    ?.getString("tipo") ?: "EGRESO"
 
                 val gasto = estado.transacciones.firstOrNull {
                     it.id == gastoId
@@ -150,6 +166,7 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
                     FormularioGasto(
                         modelo = modelo,
                         gastoInicial = gasto,
+                        tipoInicial = tipo,
                         alGuardar = {
                             navController.navigate("movimientos") {
                                 popUpTo("movimientos") {
@@ -163,13 +180,14 @@ fun NavegacionGastos(modifier: Modifier = Modifier) {
                         }
                     )
                 } else {
-                    Text("No se encontró el gasto.")
+                    Text("No se encontró el movimiento.")
                 }
             }
 
             composable("reportes") {
                 PantallaReportes(
-                    gastos = estado.transacciones
+                    gastos = estado.transacciones,
+                    tipos = estado.tipos
                 )
             }
         }

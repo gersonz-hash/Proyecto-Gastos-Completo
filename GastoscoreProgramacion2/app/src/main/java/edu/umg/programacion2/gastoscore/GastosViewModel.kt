@@ -4,22 +4,24 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import edu.umg.programacion2.gastos.modelo.Gasto
-import edu.umg.programacion2.gastos.servicio.ControlGastos
+import edu.umg.programacion2.gastoscore.datos.GastoEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import edu.umg.programacion2.gastoscore.datos.GastoEntity
+
 data class GastosUiState(
     val transacciones: List<Gasto> = emptyList(),
+    val tipos: Map<Int, String> = emptyMap(),
+    val ingresos: Double = 0.0,
     val egresos: Double = 0.0
-)
+) {
+    val saldo: Double
+        get() = ingresos - egresos
+}
 
 class GastosViewModel(
     application: Application
 ) : AndroidViewModel(application) {
-
-    private val control: ControlGastos =
-        Dependencias.obtenerControl(application)
 
     private val dao = GestorBaseDatos.obtenerDao(application)
 
@@ -32,66 +34,90 @@ class GastosViewModel(
         }
     }
 
-    // Registrar un gasto
-    fun registrar(gasto: Gasto, alTerminar: (String?) -> Unit) {
+    fun registrar(
+        gasto: Gasto,
+        tipo: String,
+        alTerminar: (String?) -> Unit
+    ) {
         viewModelScope.launch {
             try {
-                val error = control.registrar(gasto)
+                dao.insertar(
+                    GastoEntity.desde(
+                        gasto.copy(id = 0),
+                        tipo.uppercase()
+                    )
+                )
 
-                if (error == null) {
-                    actualizarEstado()
-                }
+                actualizarEstado()
+                alTerminar(null)
 
-                alTerminar(error)
             } catch (e: Exception) {
-                alTerminar(e.message ?: "No se pudo registrar el gasto")
+                alTerminar(
+                    e.message ?: "No se pudo registrar el movimiento"
+                )
             }
         }
     }
 
-    // Eliminar un gasto
-    fun eliminar(id: Int, alTerminar: (String?) -> Unit) {
+    fun eliminar(
+        id: Int,
+        alTerminar: (String?) -> Unit
+    ) {
         viewModelScope.launch {
             try {
-                val eliminado = dao.eliminar(id)
+                val movimiento = dao.buscarPorId(id)
 
-                if (eliminado > 0) {
+                if (movimiento == null) {
+                    alTerminar("No se encontró el movimiento")
+                } else {
+                    dao.eliminar(movimiento)
                     actualizarEstado()
                     alTerminar(null)
-                } else {
-                    alTerminar("No se encontró el gasto")
                 }
             } catch (e: Exception) {
-                alTerminar(e.message ?: "No se pudo eliminar el gasto")
+                alTerminar(e.message ?: "No se pudo eliminar")
             }
         }
     }
 
-    // Editar un gasto
-    fun editar(gasto: Gasto, alTerminar: (String?) -> Unit) {
+    fun editar(
+        gasto: Gasto,
+        tipo: String,
+        alTerminar: (String?) -> Unit
+    ) {
         viewModelScope.launch {
             try {
-                val actualizado = dao.actualizar(
-                    GastoEntity.desde(gasto)
-                ) > 0
+                val anterior = dao.buscarPorId(gasto.id)
 
-                if (actualizado) {
+                if (anterior == null) {
+                    alTerminar("No se encontró el movimiento")
+                } else {
+                    dao.actualizar(
+                        GastoEntity.desde(
+                            gasto,
+                            tipo.uppercase()
+                        )
+                    )
+
                     actualizarEstado()
                     alTerminar(null)
-                } else {
-                    alTerminar("No se pudo actualizar el gasto")
                 }
             } catch (e: Exception) {
-                alTerminar(e.message ?: "Error al editar el gasto")
+                alTerminar(e.message ?: "No se pudo editar")
             }
         }
     }
 
-    // Actualizar los datos que aparecen en pantalla
     private suspend fun actualizarEstado() {
+        val filas = dao.listar()
+
+        val movimientos = filas.map { it.aGasto() }
+
         _estado.value = GastosUiState(
-            transacciones = control.listar(),
-            egresos = control.total()
+            transacciones = movimientos,
+            tipos = filas.associate { it.id to it.tipo },
+            ingresos = dao.totalPorTipo("INGRESO"),
+            egresos = dao.totalPorTipo("EGRESO")
         )
     }
 }

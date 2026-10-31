@@ -8,20 +8,12 @@ class GastoRepositoryRoom(
 ) : GastoRepository {
 
     override suspend fun agregar(gasto: Gasto): Gasto {
-        val idNuevo = dao.insertar(
-            GastoEntity.desde(gasto.copy(id = 0))
-        )
-        return gasto.copy(id = idNuevo.toInt())
+        val id = dao.insertar(GastoEntity.desde(gasto))
+        return gasto.copy(id = id.toInt())
     }
 
     override suspend fun listar(): List<Gasto> {
-        val gastos = mutableListOf<Gasto>()
-
-        for (fila in dao.listar()) {
-            gastos.add(fila.aGasto())
-        }
-
-        return gastos
+        return dao.listar().map { it.aGasto() }
     }
 
     override suspend fun buscarPorId(id: Int): Gasto? {
@@ -33,6 +25,7 @@ class GastoRepositoryRoom(
     }
 
     override suspend fun eliminar(id: Int): Boolean {
-        return dao.eliminar(id) > 0
+        val gasto = dao.buscarPorId(id) ?: return false
+        return dao.eliminar(gasto) > 0
     }
 }
